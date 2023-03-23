@@ -1,8 +1,11 @@
 import requests
+import os
+from dotenv import load_dotenv
 
 
 def main():
-    credentials = 'd2FycmVuQG1hbmNoZXN0ZXJkaWdpdGFsZGVzaWduLmNvLnVrOjc0YjNjNzUwNjBlNDg0NzcyNTgxODg5NmZkYjJhZGFhODQzNmIyYg=='
+    load_dotenv()
+    credentials = os.getenv('API_KEY')
 
     with open('python.txt', 'r') as input_file:
         packages = [line.strip() for line in input_file]
