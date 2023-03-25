@@ -19,6 +19,11 @@ def get_vulnerabilities(chunk, credentials, ecosystem):
     }
 
     response = requests.post(url, json=payload, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Error: Received status code {response.status_code} from the API")
+        response.raise_for_status()
+
     results = response.json()
     return results
 
@@ -52,7 +57,12 @@ def main():
     for i in range(0, len(packages), chunk_size):
         chunk = packages[i:i + chunk_size]
         print(f"Checking package(s): {', '.join(chunk)}")
-        results = get_vulnerabilities(chunk, credentials, ecosystem)
+
+        try:
+            results = get_vulnerabilities(chunk, credentials, ecosystem)
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred while processing chunk: {e}")
+            continue
 
         for result in results:
             print(f"{result['coordinates']}: {len(result['vulnerabilities'])} known vulnerabilities")
