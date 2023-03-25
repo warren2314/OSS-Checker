@@ -6,10 +6,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 
 
-def get_vulnerabilities(chunk, credentials):
+def get_vulnerabilities(chunk, credentials, ecosystem):
     url = "https://ossindex.sonatype.org/api/v3/component-report"
 
-    payload = {"coordinates": [f"pkg:pypi/{package}" for package in chunk]}
+    payload = {"coordinates": [f"pkg:{ecosystem}/{package}" for package in chunk]}
 
     headers = {
         'Content-Type': 'application/json',
@@ -24,6 +24,8 @@ def get_vulnerabilities(chunk, credentials):
 def main():
     load_dotenv()
     credentials = os.getenv('API_KEY')
+
+    ecosystem = input("Enter the package ecosystem (e.g. pypi, maven, npm etc.): ").lower()
 
     with open('python.txt', 'r') as input_file:
         packages = [line.strip() for line in input_file]
@@ -48,7 +50,7 @@ def main():
     for i in range(0, len(packages), chunk_size):
         chunk = packages[i:i + chunk_size]
         print(f"Checking package(s): {', '.join(chunk)}")
-        results = get_vulnerabilities(chunk, credentials)
+        results = get_vulnerabilities(chunk, credentials, ecosystem)
 
         for result in results:
             print(f"{result['coordinates']}: {len(result['vulnerabilities'])} known vulnerabilities")
