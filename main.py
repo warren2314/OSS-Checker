@@ -2,6 +2,8 @@ import time
 import requests
 import os
 from dotenv import load_dotenv
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
 
 
 def get_vulnerabilities(chunk, credentials):
@@ -30,11 +32,23 @@ def main():
     seconds_between_calls = 60 / calls_per_minute
     chunk_size = 128
 
-    with open('vulnerabilities.txt', 'a') as output_file:
-        for i in range(0, len(packages), chunk_size):
-            chunk = packages[i:i + chunk_size]
-            print(f"Checking package(s): {', '.join(chunk)}")
-            results = get_vulnerabilities(chunk, credentials)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Vulnerabilities"
+    row = 1
+
+    #add header labels for xlsx
+    ws.cell(row=row, column=1, value="Title")
+    ws.cell(row=row, column=2, value="Score")
+    ws.cell(row=row, column=3, value="CVE")
+    ws.cell(row=row, column=4, value="Description")
+
+    row += 1
+
+    for i in range(0, len(packages), chunk_size):
+        chunk = packages[i:i + chunk_size]
+        print(f"Checking package(s): {', '.join(chunk)}")
+        results = get_vulnerabilities(chunk, credentials)
 
         for result in results:
             print(f"{result['coordinates']}: {len(result['vulnerabilities'])} known vulnerabilities")
@@ -44,12 +58,21 @@ def main():
                 cvss_score = vulnerability.get('cvssScore', 'N/A')
                 description = vulnerability.get('description', 'N/A')
 
-                output_file.write('   Title:  {}\n'.format(title))
-                output_file.write('   Score:  {}\n'.format(cvss_score))
-                output_file.write('   CVE:    {}\n'.format(cve))
-                output_file.write('   Description:  {}\n'.format(description))
+                ws.cell(row=row, column=1, value=f"{title}")
+                ws.cell(row=row, column=2, value=f"{cvss_score}")
+                ws.cell(row=row, column=3, value=f"{cve}")
+                ws.cell(row=row, column=4, value=f"{description}")
+
+                for col in range(1,5):
+                    ws.cell(row=row, column=col).alignment = Alignment(wrapText=True, vertical='top', horizontal='left')
+
+                row += 1
+
+            row += 1 #creates an empty row between packages
 
         time.sleep(seconds_between_calls)
+
+    wb.save("vulnerabilities.xlsx")
 
 
 if __name__ == '__main__':
