@@ -42,7 +42,7 @@ def main():
     chunk_size = 128
 
     wb = Workbook()
-    ws = wb.active
+    ws = wb.create_sheet()
     ws.title = "Vulnerabilities"
     row = 1
 
