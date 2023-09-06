@@ -155,7 +155,7 @@ def main():
 
     wo_number = input("Please enter a 6-digit WO number: ")
     while len(wo_number) != 6 or not wo_number.isdigit():
-        print("Invalid input. Please ensure you enter a 6-digit number.")
+        print("Invalid input. Please ensure you enter a 6-digit number and exclude the WO.")
         wo_number = input("Please enter a 6-digit WO number: ")
         
     filename = f"WO{wo_number}_vulnerabilities.xlsx"
