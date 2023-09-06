@@ -7,7 +7,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 
 def extract_name_and_version_v2(filename):
-    base_name = filename.split('.conda')[0]
+
+    base_name = filename.split('.conda')[0].split('.tar.bz2')[0]
     parts = base_name.split('-')
     name = '-'.join(parts[:-2])
     version = parts[-2]
@@ -18,8 +19,10 @@ def process_conda_directory(directory_path):
         print(f"Directory '{directory_path}' does not exist!")
         return []
 
-    files = [f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f)) and f.endswith('.conda')]
-    package_details = []
+
+    files = [f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f)) and (f.endswith('.conda') or f.endswith('.tar.bz2'))]
+    package_details = ["Ecosystem: conda"]
+
     for file in files:
         result = extract_name_and_version_v2(file)
         print(result)
@@ -37,7 +40,9 @@ def get_package_details(filename):
         return None
 
 def process_python_directory(directory_path, output_filename):
-    package_details = []
+
+    package_details = ["Ecosystem: pypi"]
+
     with open(output_filename, 'w') as output_file:
         for root, dirs, files in os.walk(directory_path):
             for file in files:
@@ -54,32 +59,24 @@ def extract_artifacts_to_file(directory_path, structure_type):
 
     if structure_type == "conda":
         artifact_version_data = process_conda_directory(directory_path)
-    elif structure_type == "python":
+    elif structure_type == "pypi":
         output_filename = os.path.join(directory_path, "python_output.txt")
         artifact_version_data = process_python_directory(directory_path, output_filename)
     else:
-        for root, dirs, _ in os.walk(directory_path):
-            rel_path_parts = os.path.relpath(root, directory_path).split(os.path.sep)
-            if len(rel_path_parts) > 0 and rel_path_parts[-1][0].isdigit():
-                artifact = ".".join(rel_path_parts[:-1])
-                artifact = artifact.rsplit(".", 1)[0] + "/" + artifact.rsplit(".", 1)[1] + "@" + rel_path_parts[-1]
-                artifact_version_data.append(f"{artifact}")
+        print("Unsupported structure type.")
+        return
 
     with open("oss_index.txt", "w") as f:
         for line in artifact_version_data:
            f.write(line + "\n")
 
     print("The text file has been created.")
-
-
+    
     with open("oss_index.txt", "w") as f:
         for line in artifact_version_data:
            f.write(line + "\n")
 
     print("The text file has been created.")
-
-# ... (rest of your existing functions and main block)
-
 
 def get_vulnerabilities(chunk, credentials, ecosystem):
     url = "https://ossindex.sonatype.org/api/v3/component-report"
@@ -88,6 +85,10 @@ def get_vulnerabilities(chunk, credentials, ecosystem):
         'Content-Type': 'application/json',
         'Authorization': f'Basic {credentials}'
     }
+    
+    print(f"Checking URL: {url}")
+    print(f"Payload: {payload}")
+    
 
     response = requests.post(url, json=payload, headers=headers)
     if response.status_code != 200:
@@ -100,19 +101,28 @@ def get_vulnerabilities(chunk, credentials, ecosystem):
 def main():
     load_dotenv()
     credentials = os.getenv('API_KEY')
+    print(f"Credentials: {credentials}")  # Print the credentials to verify they are being retrieved correctly
 
     directory_path = input("Enter the directory path: ")
-    structure_types = input("Enter the structure types (maven, conda, python) separated by commas: ").lower().split(',')
+    structure_types = input("Enter the structure types (maven, conda, pypi) separated by commas: ").lower().split(',')
 
     for structure_type in structure_types:
         structure_type = structure_type.strip()
         print(f"Processing {structure_type} structure...")
         extract_artifacts_to_file(directory_path, structure_type)
 
-    ecosystem = input("Enter the package ecosystem (e.g. pypi, maven, npm etc.): ").lower()
+
+    for structure_type in structure_types:
+        structure_type = structure_type.strip()
+        print(f"Processing {structure_type} structure...")
+        extract_artifacts_to_file(directory_path, structure_type)
 
     with open('oss_index.txt', 'r') as input_file:
+        ecosystem_line = input_file.readline().strip()
+        ecosystem = ecosystem_line.split(": ")[1]
+        print(f"Identified Ecosystem: {ecosystem}")  # Print the identified ecosystem to verify it's correct
         packages = [line.strip() for line in input_file]
+        print(f"Identified Packages: {packages}")  # Print the list of packages to verify it's correct
 
     calls_per_minute = 120
     seconds_between_calls = 60 / calls_per_minute
@@ -161,7 +171,7 @@ def main():
 
     wo_number = input("Please enter a 6-digit WO number: ")
     while len(wo_number) != 6 or not wo_number.isdigit():
-        print("Invalid input. Please ensure you enter a 6-digit number.")
+        print("Invalid input. Please ensure you enter a 6-digit number and exclude the WO.")
         wo_number = input("Please enter a 6-digit WO number: ")
         
     filename = f"WO{wo_number}_vulnerabilities.xlsx"
