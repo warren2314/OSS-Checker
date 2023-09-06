@@ -94,7 +94,7 @@ def main():
     print(f"Credentials: {credentials}")  # Print the credentials to verify they are being retrieved correctly
 
     directory_path = input("Enter the directory path: ")
-    structure_types = input("Enter the structure types (maven, conda, python) separated by commas: ").lower().split(',')
+    structure_types = input("Enter the structure types (maven, conda, pypi) separated by commas: ").lower().split(',')
 
     for structure_type in structure_types:
         structure_type = structure_type.strip()
