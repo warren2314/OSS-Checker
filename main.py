@@ -7,6 +7,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 
 def extract_name_and_version_v2(filename):
+
     base_name = filename.split('.conda')[0].split('.tar.bz2')[0]
     parts = base_name.split('-')
     name = '-'.join(parts[:-2])
@@ -18,8 +19,10 @@ def process_conda_directory(directory_path):
         print(f"Directory '{directory_path}' does not exist!")
         return []
 
+
     files = [f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f)) and (f.endswith('.conda') or f.endswith('.tar.bz2'))]
     package_details = ["Ecosystem: conda"]
+
     for file in files:
         result = extract_name_and_version_v2(file)
         print(result)
@@ -37,7 +40,9 @@ def get_package_details(filename):
         return None
 
 def process_python_directory(directory_path, output_filename):
+
     package_details = ["Ecosystem: pypi"]
+
     with open(output_filename, 'w') as output_file:
         for root, dirs, files in os.walk(directory_path):
             for file in files:
@@ -67,6 +72,11 @@ def extract_artifacts_to_file(directory_path, structure_type):
 
     print("The text file has been created.")
     
+    with open("oss_index.txt", "w") as f:
+        for line in artifact_version_data:
+           f.write(line + "\n")
+
+    print("The text file has been created.")
 
 def get_vulnerabilities(chunk, credentials, ecosystem):
     url = "https://ossindex.sonatype.org/api/v3/component-report"
@@ -95,6 +105,12 @@ def main():
 
     directory_path = input("Enter the directory path: ")
     structure_types = input("Enter the structure types (maven, conda, pypi) separated by commas: ").lower().split(',')
+
+    for structure_type in structure_types:
+        structure_type = structure_type.strip()
+        print(f"Processing {structure_type} structure...")
+        extract_artifacts_to_file(directory_path, structure_type)
+
 
     for structure_type in structure_types:
         structure_type = structure_type.strip()
