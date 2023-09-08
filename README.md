@@ -22,11 +22,11 @@ This script checks for vulnerabilities using the OSS index. It now supports Mave
 ## Example
 
 For Maven and Conda:
-- Directory Path: `/home/ubuntu/Downloads/WO488486`
+- Directory Path: `/home/ubuntu/Downloads/<directory>`
 - Structure Types: `maven,conda`
 
 For Python and Conda:
-- Directory Path: `/home/ubuntu/Downloads/WO474824`
+- Directory Path: `/home/ubuntu/Downloads/<directory>`
 - Structure Types: `python,conda`
 
 ## Note
