@@ -58,6 +58,36 @@ def process_python_directory(directory_path, output_filename):
     return package_details
 
 
+# Function to extract package name from RPM filename
+def extract_rpm_details(filename):
+    match = re.match(r'([a-zA-Z0-9_\-]+)-([\d:.]+)-', filename)
+    if match:
+        package_name = match.group(1)
+        version = match.group(2)
+        return f"{package_name}@{version}"
+    else:
+        return None
+
+
+# Function to process RPM directory
+def process_rpm_directory(directory_path):
+    if not os.path.exists(directory_path):
+        print(f"Directory '{directory_path}' does not exist!")
+        return []
+
+    package_details = ["Ecosystem: rpm"]
+
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith('.rpm'):
+                package_detail = extract_rpm_details(file)
+                if package_detail:
+                    print(package_detail)
+                    package_details.append(package_detail)  # Only append the package name
+
+    return package_details
+
+
 def extract_artifacts_to_file(directory_path, structure_type):
     artifact_version_data = []
 
@@ -66,6 +96,8 @@ def extract_artifacts_to_file(directory_path, structure_type):
     elif structure_type == "pypi":
         output_filename = os.path.join(directory_path, "python_output.txt")
         artifact_version_data.extend(process_python_directory(directory_path, output_filename))
+    elif structure_type == "rpm":  # Add this new case for RPM
+        artifact_version_data.extend(process_rpm_directory(directory_path))
     else:
         print("Unsupported structure type.")
         return
@@ -75,21 +107,36 @@ def extract_artifacts_to_file(directory_path, structure_type):
 
 def get_vulnerabilities(chunk, credentials, ecosystem):
     url = "https://ossindex.sonatype.org/api/v3/component-report"
-    payload = {"coordinates": [f"pkg:{ecosystem}/{package}" for package in chunk]}
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Basic {credentials}'
-    }
+    results = []
 
-    print(f"Checking URL: {url}")
-    print(f"Payload: {payload}")
+    for package in chunk:
+        if '@' in package:  # Check if the package string contains a version
+            package_name, package_version = package.split('@')
+            coordinate = f"pkg:{ecosystem}/{package_name}@{package_version}"
+        else:
+            package_name = package
+            coordinate = f"pkg:{ecosystem}/{package_name}"
 
-    response = requests.post(url, json=payload, headers=headers)
-    if response.status_code != 200:
-        print(f"Error: Received status code {response.status_code} from the API")
-        response.raise_for_status()
+        payload = {"coordinates": [coordinate]}
 
-    results = response.json()
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Basic {credentials}'
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code != 200:
+                print(f"Error: Received status code {response.status_code} from the API for package {package}")
+                continue  # Skip this package and continue with the next one
+
+            result = response.json()
+            results.append(result)
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred while processing package {package}: {e}")
+            continue  # Skip this package and continue with the next one
+
     return results
 
 
@@ -99,7 +146,7 @@ def main():
     print(f"Credentials: {credentials}")
 
     directory_path = input("Enter the directory path: ")
-    structure_types = input("Enter the structure types (conda, pypi) separated by commas: ").lower().split(',')
+    structure_types = input("Enter the structure types (conda, pypi, rpm, maven) separated by commas: ").lower().split(',')
 
     wb = Workbook()
     ws = wb.active
@@ -116,8 +163,6 @@ def main():
                 f.write(line + "\n")
 
         print(f"The text file for {ecosystem} has been created.")
-
-        # ... (rest of the code to read from the new file and get vulnerabilities)
 
         with open(f'oss_index_{ecosystem}.txt', 'r') as input_file:
             ecosystem_line = input_file.readline().strip()
