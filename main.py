@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import re
+import logging
 from dotenv import load_dotenv
 from openpyxl import Workbook
 from openpyxl.styles import Alignment
@@ -88,6 +89,29 @@ def process_rpm_directory(directory_path):
     return package_details
 
 
+# Process Maven packages
+def process_maven_directory(directory_path):
+    # Initialize an empty list  for storing artifact and version information
+    artifact_version_data = []
+
+    for root, dirs, _ in os.walk(directory_path):
+        # Split the path into parts
+        path_parts = os.path.relpath(root, directory_path).split(os.path.sep)
+        # If there are at least three parts in the path
+        if len(path_parts) >= 3:
+            # The artifact name is the second part of the path
+            artifact = path_parts[1]
+            # The version is the third part of the path
+            version = path_parts[2]
+            # Store the artifact and version information
+            artifact_version_data.append(f"{artifact}@{version}")
+
+        # Remove duplicates from the list
+    artifact_version_data = list(set(artifact_version_data))
+
+    return artifact_version_data
+
+
 def extract_artifacts_to_file(directory_path, structure_type):
     artifact_version_data = []
 
@@ -98,6 +122,8 @@ def extract_artifacts_to_file(directory_path, structure_type):
         artifact_version_data.extend(process_python_directory(directory_path, output_filename))
     elif structure_type == "rpm":  # Add this new case for RPM
         artifact_version_data.extend(process_rpm_directory(directory_path))
+    elif structure_type == "maven":
+        artifact_version_data.extend(process_maven_directory(directory_path))
     else:
         print("Unsupported structure type.")
         return
@@ -130,7 +156,8 @@ def get_vulnerabilities(chunk, credentials, ecosystem):
                 print(f"Error: Received status code {response.status_code} from the API for package {package}")
                 continue  # Skip this package and continue with the next one
 
-            result = response.json()
+            result = response.json()[0]
+            print(result)
             results.append(result)
 
         except requests.exceptions.RequestException as e:
@@ -146,7 +173,8 @@ def main():
     print(f"Credentials: {credentials}")
 
     directory_path = input("Enter the directory path: ")
-    structure_types = input("Enter the structure types (conda, pypi, rpm, maven) separated by commas: ").lower().split(',')
+    structure_types = input("Enter the structure types (conda, pypi, rpm, maven) separated by commas: ").lower().split(
+        ',')
 
     wb = Workbook()
     ws = wb.active
@@ -166,6 +194,7 @@ def main():
 
         with open(f'oss_index_{ecosystem}.txt', 'r') as input_file:
             ecosystem_line = input_file.readline().strip()
+            print(f"Debug: ecosystem_line = {ecosystem_line}")
             ecosystem = ecosystem_line.split(": ")[1]
             print(f"Identified Ecosystem: {ecosystem}")
             packages = [line.strip() for line in input_file]
