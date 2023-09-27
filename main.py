@@ -91,24 +91,20 @@ def process_rpm_directory(directory_path):
 
 # Process Maven packages
 def process_maven_directory(directory_path):
-    # Initialize an empty list  for storing artifact and version information
-    artifact_version_data = []
-
-    for root, dirs, _ in os.walk(directory_path):
-        # Split the path into parts
-        path_parts = os.path.relpath(root, directory_path).split(os.path.sep)
-        # If there are at least three parts in the path
-        if len(path_parts) >= 3:
-            # The artifact name is the second part of the path
-            artifact = path_parts[1]
-            # The version is the third part of the path
-            version = path_parts[2]
-            # Store the artifact and version information
-            artifact_version_data.append(f"{artifact}@{version}")
-
-        # Remove duplicates from the list
-    artifact_version_data = list(set(artifact_version_data))
-
+    # Initialize a list with the ecosystem information
+    artifact_version_data = ["Ecosystem: maven"]
+    for root, dirs, files in os.walk(directory_path):
+        # Check if the current directory contains .pom or .jar files
+        if any(file.endswith(('.pom', '.jar')) for file in files):
+            parts = root.split(os.sep)
+            # Ensure there are enough parts to get artifact and version
+            if len(parts) > 3:
+                version = parts[-2]  # The version is two directories up
+                artifact = parts[-3]  # The artifact name is three directories up
+                artifact_version_data.append(f"{artifact}@{version}")
+                #print(f"Debug: Appending artifact: {artifact}@{version}")  # Debug statement
+    # Remove duplicates from the artifact and version data, keeping the ecosystem information intact
+    artifact_version_data = [artifact_version_data[0]] + list(set(artifact_version_data[1:]))
     return artifact_version_data
 
 
@@ -195,10 +191,14 @@ def main():
         with open(f'oss_index_{ecosystem}.txt', 'r') as input_file:
             ecosystem_line = input_file.readline().strip()
             print(f"Debug: ecosystem_line = {ecosystem_line}")
-            ecosystem = ecosystem_line.split(": ")[1]
+            packages = []  # Initialize packages here
+            if ": " in ecosystem_line:  # Add this check
+                ecosystem = ecosystem_line.split(": ")[1]
+            else:
+                print(f"Unexpected format: {ecosystem_line}")
+                ecosystem = "unknown"
             print(f"Identified Ecosystem: {ecosystem}")
-            packages = [line.strip() for line in input_file]
-            print(f"Identified Packages: {packages}")
+            packages.extend(line.strip() for line in input_file)
 
         ws = wb.create_sheet(title=f"{ecosystem.capitalize()} Vulnerabilities")
         row = 1
