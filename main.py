@@ -59,33 +59,21 @@ def process_python_directory(directory_path, output_filename):
     return package_details
 
 
-# Function to extract package name from RPM filename
-def extract_rpm_details(filename):
-    match = re.match(r'([a-zA-Z0-9_\-]+)-([\d:.]+)-', filename)
-    if match:
-        package_name = match.group(1)
-        version = match.group(2)
-        return f"{package_name}@{version}"
-    else:
-        return None
-
-
-# Function to process RPM directory
-def process_rpm_directory(directory_path):
-    if not os.path.exists(directory_path):
-        print(f"Directory '{directory_path}' does not exist!")
-        return []
-
-    package_details = ["Ecosystem: rpm"]
-
+# Function to process NuGet directory
+def process_nuget_directory(directory_path):
+    # Initialize a list with the ecosystem information
+    package_details = ["Ecosystem: nuget"]
+    
     for root, dirs, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith('.rpm'):
-                package_detail = extract_rpm_details(file)
-                if package_detail:
-                    print(package_detail)
-                    package_details.append(package_detail)  # Only append the package name
-
+        # Check if the current directory contains .nupkg files
+        if any(file.endswith('.nupkg') for file in files):
+            # Extract the package name and version from the directory structure
+            parts = root.split(os.sep)
+            if len(parts) > 2:
+                version = parts[-1]  # The version is the last directory
+                package_name = parts[-2]  # The package name is one directory up
+                package_details.append(f"{package_name}@{version}")
+                
     return package_details
 
 
@@ -120,6 +108,8 @@ def extract_artifacts_to_file(directory_path, structure_type):
         artifact_version_data.extend(process_rpm_directory(directory_path))
     elif structure_type == "maven":
         artifact_version_data.extend(process_maven_directory(directory_path))
+    elif structure_type == "nuget":
+    	artifact_version_data.extend(process_nuget_directory(directory_path))
     else:
         print("Unsupported structure type.")
         return
